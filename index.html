@@ -489,7 +489,6 @@
         .key-submit  { background: var(--accent2); color: #000; font-weight: 800; border-color: transparent; }
     </style>
 
-    <!-- Dynamic wallpaper styles injected by JS -->
     <style id="wallpaperStyle"></style>
 </head>
 <body>
@@ -524,7 +523,6 @@
         </div>
     </div>
 
-    <!-- ─── Help Modal ─────────────────────────────────────── -->
     <div class="modal-overlay" id="helpModalOverlay">
         <div class="app-modal modal-help">
             <div class="modal-title title-help">💡 Formeln & Hinweise</div>
@@ -533,7 +531,6 @@
         </div>
     </div>
 
-    <!-- ─── Settings Modal ────────────────────────────────── -->
     <div class="modal-overlay" id="settingsModalOverlay">
         <div class="app-modal modal-settings">
             <div class="modal-title title-settings">🎨 Einstellungen</div>
@@ -548,7 +545,6 @@
         </div>
     </div>
 
-    <!-- ─── Math Keyboard ─────────────────────────────────── -->
     <div class="math-keyboard" id="mathKeyboard">
         <div class="keyboard-row">
             <button class="key key-action">n</button>
@@ -572,48 +568,8 @@
 
     <script>
         // ================================================================
-        // CONFIG
+        // CONFIG & API FETCH
         // ================================================================
-        async function fetchProblemsFromGroq(topicPrompt) {
-    const systemPrompt = `You are a strict JSON generator. Respond ONLY with valid JSON. Do not wrap in markdown quotes.
-Language for all content: "${currentLang}".
-Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
-
-    try {
-        const response = await fetch("/api/chat", { // МЕНЯЕМ URL ЗДЕСЬ
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user",   content: `Generate JSON object with 10 exercises for: ${topicPrompt}` }
-                ],
-                temperature: 0.2,
-                response_format: { type: "json_object" }
-            })
-        });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        let raw = data.choices[0].message.content.trim();
-        const m = raw.match(/\{[\s\S]*\}/);
-        if (m) raw = m[0];
-        const parsed = JSON.parse(raw);
-        return parsed.exercises || parsed;
-        
-    } catch (e) {
-        console.error("Error:", e);
-        return [{
-            topic: "FEHLER",
-            question: "Verbindung zum Server fehlgeschlagen.",
-            answer: "0",
-            explain: "Versuche es später erneut.",
-            help: "Server-Fehler."
-        }];
-    }
-}
         let currentLang         = 'de';
         let debounceTimer       = null;
         let isScrollThrottled   = false;
@@ -621,6 +577,59 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
         let currentCardIndex    = 0;
         let activeThemeId       = 'tiktok';
         let activeWallpaperId   = 'void';
+
+        async function fetchProblemsFromGroq(topicPrompt) {
+            const systemPrompt = `You are a strict JSON generator. Respond ONLY with valid JSON. Do not wrap in markdown quotes.
+Language for all content: "${currentLang}".
+Task: Generate exactly 10 math exercises for: "${topicPrompt}".
+Structure:
+{
+  "exercises": [
+    {
+      "topic": "Short Topic",
+      "question": "Math expression",
+      "answer": "short solution",
+      "explain": "1 sentence explanation",
+      "help": "formula"
+    }
+  ]
+}`;
+
+            try {
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user",   content: `Generate JSON object with 10 exercises for: ${topicPrompt}` }
+                        ],
+                        temperature: 0.2,
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                let raw = data.choices[0].message.content.trim();
+                const m = raw.match(/\{[\s\S]*\}/);
+                if (m) raw = m[0];
+                const parsed = JSON.parse(raw);
+                return parsed.exercises || parsed;
+                
+            } catch (e) {
+                console.error("Error:", e);
+                return [{
+                    topic: "FEHLER",
+                    question: "Verbindung zum Server fehlgeschlagen.",
+                    answer: "0",
+                    explain: "Versuche es позже erneut.",
+                    help: "Server-Fehler."
+                }];
+            }
+        }
 
         // ================================================================
         // DOM REFS
@@ -656,65 +665,27 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
         // WALLPAPER DATA
         // ================================================================
         const wallpapers = [
-            {
-                id: 'void',
-                name: 'Void',
-                css: 'body { background: #0a0a0a !important; }',
-                preview: 'background:#0a0a0a;'
-            },
-            {
-                id: 'cosmos',
-                name: 'Cosmos',
-                css: 'body { background: radial-gradient(ellipse at 28% 18%, #30084a 0%, #08080f 65%) !important; }',
-                preview: 'background:radial-gradient(ellipse at 28% 18%,#30084a,#08080f);'
-            },
-            {
-                id: 'aurora',
-                name: 'Aurora',
-                css: 'body { background: radial-gradient(ellipse at 50% 95%, #0b3028 0%, #081522 65%) !important; }',
-                preview: 'background:radial-gradient(ellipse at 50% 95%,#0b3028,#081522);'
-            },
-            {
-                id: 'sunset',
-                name: 'Sunset',
-                css: 'body { background: radial-gradient(ellipse at 50% 95%, #321008 0%, #19071e 65%) !important; }',
-                preview: 'background:radial-gradient(ellipse at 50% 95%,#321008,#19071e);'
-            },
-            {
-                id: 'ocean',
-                name: 'Ocean',
-                css: 'body { background: radial-gradient(ellipse at 50% 95%, #001d38 0%, #07091e 65%) !important; }',
-                preview: 'background:radial-gradient(ellipse at 50% 95%,#001d38,#07091e);'
-            },
-            {
-                id: 'grid',
-                name: 'Grid',
-                css: `body {
-                    background-color: #0c0c0c !important;
-                    background-image:
-                        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px) !important;
-                    background-size: 26px 26px !important;
-                }`,
-                preview: 'background-color:#0c0c0c;background-image:linear-gradient(rgba(255,255,255,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.07) 1px,transparent 1px);background-size:8px 8px;'
-            },
+            { id: 'void', name: 'Void', css: 'body { background: #0a0a0a !important; }', preview: 'background:#0a0a0a;' },
+            { id: 'cosmos', name: 'Cosmos', css: 'body { background: radial-gradient(ellipse at 28% 18%, #30084a 0%, #08080f 65%) !important; }', preview: 'background:radial-gradient(ellipse at 28% 18%,#30084a,#08080f);' },
+            { id: 'aurora', name: 'Aurora', css: 'body { background: radial-gradient(ellipse at 50% 95%, #0b3028 0%, #081522 65%) !important; }', preview: 'background:radial-gradient(ellipse at 50% 95%,#0b3028,#081522);' },
+            { id: 'sunset', name: 'Sunset', css: 'body { background: radial-gradient(ellipse at 50% 95%, #321008 0%, #19071e 65%) !important; }', preview: 'background:radial-gradient(ellipse at 50% 95%,#321008,#19071e);' },
+            { id: 'ocean', name: 'Ocean', css: 'body { background: radial-gradient(ellipse at 50% 95%, #001d38 0%, #07091e 65%) !important; }', preview: 'background:radial-gradient(ellipse at 50% 95%,#001d38,#07091e);' },
+            { id: 'grid', name: 'Grid', css: 'body { background-color: #0c0c0c !important; background-image: linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px) !important; background-size: 26px 26px !important; }', preview: 'background-color:#0c0c0c;background-image:linear-gradient(rgba(255,255,255,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.07) 1px,transparent 1px);background-size:8px 8px;' },
         ];
 
         // ================================================================
-        // APPLY THEME
+        // THEME & WALLPAPER APPLICATION
         // ================================================================
         function applyTheme(id) {
             const t = themes.find(x => x.id === id);
             if (!t) return;
             activeThemeId = id;
-
             const root = document.documentElement;
             root.style.setProperty('--accent',      t.accent);
             root.style.setProperty('--accent2',     t.accent2);
             root.style.setProperty('--accent-rgb',  t.aRGB);
             root.style.setProperty('--accent2-rgb', t.a2RGB);
 
-            // Update swatch active states if settings is open
             document.querySelectorAll('.theme-card').forEach(c => {
                 const active = c.dataset.id === id;
                 c.classList.toggle('is-active', active);
@@ -722,28 +693,15 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
             });
         }
 
-        // ================================================================
-        // APPLY WALLPAPER
-        // ================================================================
         function applyWallpaper(id) {
             const w = wallpapers.find(x => x.id === id);
             if (!w) return;
             activeWallpaperId = id;
-
-            // Inject CSS rule into the dedicated <style> tag
             wallpaperStyle.textContent = w.css;
-
-            // Update card active states
-            document.querySelectorAll('.wp-card').forEach(c =>
-                c.classList.toggle('is-active', c.dataset.id === id)
-            );
+            document.querySelectorAll('.wp-card').forEach(c => c.classList.toggle('is-active', c.dataset.id === id));
         }
 
-        // ================================================================
-        // BUILD SETTINGS UI
-        // ================================================================
         function buildSettingsUI() {
-            // Theme grid
             const themeGrid = document.getElementById('themeGrid');
             themeGrid.innerHTML = '';
             themes.forEach(t => {
@@ -760,7 +718,6 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
                 themeGrid.appendChild(card);
             });
 
-            // Wallpaper grid
             const wpGrid = document.getElementById('wallpaperGrid');
             wpGrid.innerHTML = '';
             wallpapers.forEach(w => {
@@ -788,7 +745,7 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
         };
 
         // ================================================================
-        // CARD RENDERING
+        // CARD RENDERING & PACK LOGIC
         // ================================================================
         function renderCurrentCard() {
             if (cardsPack.length === 0) return;
@@ -801,68 +758,6 @@ Task: Generate exactly 10 math exercises for: "${topicPrompt}".`;
             answerInput.value = '';
             keyboard.classList.add('show');
             answerInput.classList.add('active-input');
-        }
-
-        // ================================================================
-        // GROQ API
-        // ================================================================
-        async function fetchProblemsFromGroq(topicPrompt) {
-            const systemPrompt = `You are a strict JSON generator. Respond ONLY with valid JSON. Do not wrap in markdown quotes.
-Language for all content: "${currentLang}".
-Task: Generate exactly 10 math exercises for: "${topicPrompt}".
-Structure:
-{
-  "exercises": [
-    {
-      "topic": "Short Topic",
-      "question": "Math expression",
-      "answer": "short solution",
-      "explain": "1 sentence explanation",
-      "help": "formula"
-    }
-  ]
-}`;
-
-            try {
-                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${groqApiKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [
-                            { role: "system", content: systemPrompt },
-                            { role: "user",   content: `Generate JSON object with 10 exercises for: ${topicPrompt}` }
-                        ],
-                        temperature: 0.2,
-                        response_format: { type: "json_object" }
-                    })
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                let raw = data.choices[0].message.content.trim();
-                const m = raw.match(/\{[\s\S]*\}/);
-                if (m) raw = m[0];
-                const parsed = JSON.parse(raw);
-                return parsed.exercises || parsed;
-
-            } catch (e) {
-                console.error("Groq Error:", e);
-                return [{
-                    topic: "API FEHLER",
-                    question: `Fehler: ${e.message}`,
-                    answer: "ok",
-                    explain: "Überprüfe den API-Key oder die Konsole.",
-                    help: "Token-Limit oder ungültiger Key."
-                }];
-            }
         }
 
         async function generatePack(topic) {
@@ -897,7 +792,6 @@ Structure:
             }
         });
 
-        // Scroll / Swipe between cards
         window.addEventListener('wheel', e => {
             if (cardsPack.length <= 1 || isScrollThrottled) return;
             if (Math.abs(e.deltaY) > 30) {
@@ -910,7 +804,6 @@ Structure:
             }
         });
 
-        // Check answer
         checkBtn.addEventListener('click', () => {
             if (!cardsPack.length) return;
             const card = cardsPack[currentCardIndex];
@@ -929,27 +822,18 @@ Structure:
             explanationBox.style.display = 'block';
         });
 
-        // Help modal
         document.getElementById('openHelpBtn').addEventListener('click', () => {
-            helpModalBody.innerText = cardsPack.length
-                ? (cardsPack[currentCardIndex].help || "Keine Tipps.")
-                : "Keine Tipps.";
+            helpModalBody.innerText = cardsPack.length ? (cardsPack[currentCardIndex].help || "Keine Tipps.") : "Keine Tipps.";
             helpModalOverlay.classList.add('active');
         });
-        document.getElementById('closeHelpBtn').addEventListener('click', () =>
-            helpModalOverlay.classList.remove('active')
-        );
+        document.getElementById('closeHelpBtn').addEventListener('click', () => helpModalOverlay.classList.remove('active'));
 
-        // Settings modal
         document.getElementById('openSettingsBtn').addEventListener('click', () => {
             buildSettingsUI();
             settingsModalOverlay.classList.add('active');
         });
-        document.getElementById('closeSettingsBtn').addEventListener('click', () =>
-            settingsModalOverlay.classList.remove('active')
-        );
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => settingsModalOverlay.classList.remove('active'));
 
-        // Keyboard
         answerInput.addEventListener('click', () => {
             keyboard.classList.add('show');
             answerInput.classList.add('active-input');
@@ -962,7 +846,6 @@ Structure:
             else                                   answerInput.value += e.target.innerText;
         });
 
-        // Language switcher
         langSelect.addEventListener('change', e => {
             currentLang = e.target.value;
             const loc = uiLocales[currentLang];
