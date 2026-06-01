@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MathTok</title>
+    <link rel="icon" type="image/png" href="icon.png" sizes="192x192">
+    <link rel="icon" type="image/png" href="icon.png" sizes="512x512">
+
+    <link rel="apple-touch-icon" href="icon.png">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MathTok">
 
     <style>
         /* ─── CSS Variables (theme system) ─────────────────────────── */
@@ -735,14 +741,73 @@ Structure:
         }
 
         // ================================================================
-        // LOCALES
+        // LOCALES (Расширенный перевод)
         // ================================================================
         const uiLocales = {
-            de: { checkBtn: "Prüfen",      correct: "🎉 Richtig!",   wrong: "❌ Falsch.",    placeholder: "Thema suchen...",  loading: "⚡ Aufgaben werden erstellt...", settingsBtn: "Stil"  },
-            ua: { checkBtn: "Перевірити",  correct: "🎉 Правильно!", wrong: "❌ Помилка.",   placeholder: "Шукати тему...",   loading: "⚡ ШІ генерує задачі...",       settingsBtn: "Стиль" },
-            ru: { checkBtn: "Проверить",   correct: "🎉 Правильно!", wrong: "❌ Неверно.",   placeholder: "Поиск темы...",    loading: "⚡ ИИ создает задачи...",        settingsBtn: "Стиль" },
-            en: { checkBtn: "Check",       correct: "🎉 Correct!",   wrong: "❌ Incorrect.", placeholder: "Search topic...",  loading: "⚡ Generating tasks...",         settingsBtn: "Style" },
+            de: { 
+                checkBtn: "Prüfen", correct: "🎉 Richtig!", wrong: "❌ Falsch.", 
+                placeholder: "Thema suchen...", loading: "⚡ Aufgaben werden erstellt...", 
+                settingsBtn: "Stil", helpBtn: "Hilfe", closeBtn: "Schließen",
+                helpTitle: "💡 Formeln & Hinweise", settingsTitle: "🎨 Einstellungen",
+                themeLabel: "Farbthema", bgLabel: "Hintergrund", doneBtn: "Fertig ✓",
+                noTips: "Keine Tipps verfügbar.", defQuestion: "Gib ein Thema ein, um Karten zu erhalten"
+            },
+            ua: { 
+                checkBtn: "Перевірити", correct: "🎉 Правильно!", wrong: "❌ Помилка.", 
+                placeholder: "Шукати тему...", loading: "⚡ ШІ генерує задачі...", 
+                settingsBtn: "Стиль", helpBtn: "Підказка", closeBtn: "Закрити",
+                helpTitle: "💡 Формули та підказки", settingsTitle: "🎨 Налаштування",
+                themeLabel: "Колірна тема", bgLabel: "Задній фон", doneBtn: "Готово ✓",
+                noTips: "Підказок немає.", defQuestion: "Введіть тему, щоб отримати картки"
+            },
+            ru: { 
+                checkBtn: "Проверить", correct: "🎉 Правильно!", wrong: "❌ Неверно.", 
+                placeholder: "Поиск темы...", loading: "⚡ ИИ создает задачи...", 
+                settingsBtn: "Стиль", helpBtn: "Помощь", closeBtn: "Закрыть",
+                helpTitle: "💡 Формулы и подсказки", settingsTitle: "🎨 Настройки",
+                themeLabel: "Цветовая схема", bgLabel: "Задний фон", doneBtn: "Готово ✓",
+                noTips: "Подсказок нет.", defQuestion: "Введите тему, чтобы получить карточки"
+            },
+            en: { 
+                checkBtn: "Check", correct: "🎉 Correct!", wrong: "❌ Incorrect.", 
+                placeholder: "Search topic...", loading: "⚡ Generating tasks...", 
+                settingsBtn: "Style", helpBtn: "Help", closeBtn: "Close",
+                helpTitle: "💡 Formulas & Hints", settingsTitle: "🎨 Settings",
+                themeLabel: "Color Theme", bgLabel: "Background", doneBtn: "Done ✓",
+                noTips: "No tips available.", defQuestion: "Enter a topic to get cards"
+            }
         };
+
+        // ================================================================
+        // СЛУШАТЕЛЬ СМЕНЫ ЯЗЫКА
+        // ================================================================
+        langSelect.addEventListener('change', e => {
+            currentLang = e.target.value;
+            const loc = uiLocales[currentLang];
+            
+            // Обновляем главную страницу
+            searchBar.placeholder = loc.placeholder;
+            checkBtn.innerText    = loc.checkBtn;
+            document.getElementById('btnSettingsTxt').innerText = loc.settingsBtn;
+            document.getElementById('btnHelpTxt').innerText     = loc.helpBtn;
+            
+            if(cardsPack.length === 0) {
+                cardQuestion.innerText = loc.defQuestion;
+            }
+
+            // Обновляем окна настроек и помощи (динамически меняем текст в HTML)
+            document.querySelector('.title-help').innerText = loc.helpTitle;
+            document.querySelector('.title-settings').innerText = loc.settingsTitle;
+            document.getElementById('closeHelpBtn').innerText = loc.closeBtn;
+            document.getElementById('closeSettingsBtn').innerText = loc.doneBtn;
+            
+            // Перерисовываем надписи секций в настройках стиля
+            const labels = document.querySelectorAll('.section-label');
+            if(labels.length >= 2) {
+                labels[0].innerText = loc.themeLabel;
+                labels[1].innerText = loc.bgLabel;
+            }
+        });
 
         // ================================================================
         // CARD RENDERING & PACK LOGIC
