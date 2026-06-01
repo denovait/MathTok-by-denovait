@@ -803,6 +803,42 @@ Structure:
                 setTimeout(() => { isScrollThrottled = false; }, 350);
             }
         });
+        // ================================================================
+        // SWIPE FOR PHONES (TOUCH EVENTS)
+        // ================================================================
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        window.addEventListener('touchstart', e => {
+            // Игнорируем свайп, если палец на клавиатуре или поле ввода, чтобы не мешать писать
+            if (e.target.closest('#mathKeyboard') || e.target.closest('#answerInput') || e.target.closest('.top-bar')) return;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        window.addEventListener('touchend', e => {
+            if (e.target.closest('#mathKeyboard') || e.target.closest('#answerInput') || e.target.closest('.top-bar')) return;
+            if (cardsPack.length <= 1 || isScrollThrottled) return;
+
+            touchEndY = e.changedTouches[0].screenY;
+            const swipeDistance = touchEndY - touchStartY;
+
+            // Если свайпнули достаточно сильно (больше 50 пикселей)
+            if (Math.abs(swipeDistance) > 50) {
+                isScrollThrottled = true;
+                
+                if (swipeDistance < 0) {
+                    // Свайп вверх -> следующая карточка
+                    currentCardIndex = (currentCardIndex + 1) % cardsPack.length;
+                } else {
+                    // Свайп вниз -> предыдущая карточка
+                    currentCardIndex = (currentCardIndex - 1 + cardsPack.length) % cardsPack.length;
+                }
+                
+                renderCurrentCard();
+                
+                setTimeout(() => { isScrollThrottled = false; }, 350);
+            }
+        }, { passive: true });
 
         checkBtn.addEventListener('click', () => {
             if (!cardsPack.length) return;
